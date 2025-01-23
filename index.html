@@ -1,5 +1,6 @@
 <html>
 	<head><title>u2j</title></head>
+	<noscript>JavaScript support is required.</noscript>
 	<script>
 		function process(hash)
 		{
@@ -46,17 +47,18 @@
 				bits.reverse();
 				let compression = bits[0] * 4 + bits[1] * 2 + bits[2];
 				bits = bits.slice(3);
-				if (compression == 0)
+				if (compression < 2)
 				{
-					while (bits.length % 8 != 0)
+					let bitsPerByte = 8 - compression;
+					while (bits.length % bitsPerByte != 0)
 						bits.push(0);
-					let byteCount = bits.length / 8;
+					let byteCount = bits.length / bitsPerByte;
 					let bytes = new Uint8Array(byteCount);
 					for (let i = 0; i < byteCount; i++)
 					{
 						let byte = 0;
-						for (let j = 0; j < 8; j++)
-							byte += bits[i * 8 + 7 - j] << j;
+						for (let j = 0; j < bitsPerByte; j++)
+							byte += bits[i * bitsPerByte + bitsPerByte - 1 - j] << j;
 						bytes[i] = byte;
 					}
 					js = new TextDecoder().decode(bytes);
