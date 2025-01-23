@@ -1,0 +1,20 @@
+<html>
+	<head><title>u2j</title></head>
+	<script>
+		function process(hash)
+		{
+			if (hash == "")
+				return;
+			hash = hash.substring(1);
+			if (hash == "")
+				return;
+			let encoding = hash.at(0);
+			let js = "";
+			if (encoding == "0")
+				js = hash.substring(1);
+			eval(js);
+		}
+		process(window.location.hash);
+	</script>
+	<body></body>
+</html>
