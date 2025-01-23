@@ -8,10 +8,64 @@
 			hash = hash.substring(1);
 			if (hash == "")
 				return;
-			let encoding = hash.at(0);
 			let js = "";
+			let encoding = hash.at(0);
+			const alphabets =
+			{
+				"1": "01",
+				"2": "0123456789",
+				"3": "0123456789abcdef",
+				"4": "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+			};
+			hash = hash.substring(1);
 			if (encoding == "0")
-				js = hash.substring(1);
+				js = hash;
+			else if (encoding in alphabets)
+			{
+				let alphabet = alphabets[encoding];
+				let base = BigInt(alphabet.length);
+				let num = 0n;
+				for (const symbol of hash)
+				{
+					let symbolIndex = alphabet.indexOf(symbol);
+					if (symbolIndex == -1)
+						return;
+					num *= base;
+					num += BigInt(symbolIndex);
+				}
+				if (num == 0n)
+					return;
+				let bits = [];
+				while (num != 1n)
+				{
+					bits.push(Number(num % 2n));
+					num /= 2n;
+				}
+				if (bits.length < 3)
+					return;
+				bits.reverse();
+				let compression = bits[0] * 4 + bits[1] * 2 + bits[2];
+				bits = bits.slice(3);
+				if (compression == 0)
+				{
+					while (bits.length % 8 != 0)
+						bits.push(0);
+					let byteCount = bits.length / 8;
+					let bytes = new Uint8Array(byteCount);
+					for (let i = 0; i < byteCount; i++)
+					{
+						let byte = 0;
+						for (let j = 0; j < 8; j++)
+							byte += bits[i * 8 + 7 - j] << j;
+						bytes[i] = byte;
+					}
+					js = new TextDecoder().decode(bytes);
+				}
+				else
+					return;
+			}
+			else
+				return;
 			eval(js);
 		}
 		process(window.location.hash);
