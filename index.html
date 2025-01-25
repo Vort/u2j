@@ -1,7 +1,7 @@
+<!DOCTYPE html>
 <html>
 	<head><title>u2j</title></head>
-	<noscript>JavaScript support is required.</noscript>
-	<script>
+	<body><noscript>JavaScript support is required.</noscript><script>
 	{
 		let g = s => document.getElementsByTagName(s)[0];
 		let e = s => document.createElement(s);
@@ -115,8 +115,8 @@
 			urlarea.rows = 8;
 			let convertbutton = e("button");
 			convertbutton.style.display = "block";
-			convertbutton.style.marginTop = 6;
-			convertbutton.style.marginBottom = 6;
+			convertbutton.style.marginTop = "6px";
+			convertbutton.style.marginBottom = "6px";
 			convertbutton.textContent = "↓ Convert ↓";
 			convertbutton.onclick = () =>
 			{
@@ -141,6 +141,5 @@
 		else
 			showui();
 	}
-	</script>
-	<body></body>
+	</script></body>
 </html>
