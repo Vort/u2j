@@ -69,8 +69,7 @@
 			}
 			else
 				return "Unknown encoding " + encoding;
-			g('noscript').remove();
-			g('script').remove();
+			g('body').innerHTML = "";
 			g('title').remove();
 			setTimeout(js, 0);
 		};
