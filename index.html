@@ -16,7 +16,7 @@
 		{
 			hash = hash.substring(1);
 			if (hash == "")
-				return;
+				return "Empty fragment";
 			let js = "";
 			let encoding = hash.at(0);
 			hash = hash.substring(1);
@@ -31,12 +31,12 @@
 				{
 					let symbolIndex = alphabet.indexOf(symbol);
 					if (symbolIndex == -1)
-						return;
+						return "Unexpected symbol '" + symbol + "'";
 					num *= base;
 					num += BigInt(symbolIndex);
 				}
 				if (num == 0n)
-					return;
+					return "No data";
 				let bits = [];
 				while (num != 1n)
 				{
@@ -44,7 +44,7 @@
 					num /= 2n;
 				}
 				if (bits.length < 3)
-					return;
+					return "Compression type missing";
 				bits.reverse();
 				let compression = bits[0] * 4 + bits[1] * 2 + bits[2];
 				bits = bits.slice(3);
@@ -65,10 +65,10 @@
 					js = new TextDecoder().decode(bytes);
 				}
 				else
-					return;
+					return "Unknown compression type " + compression;
 			}
 			else
-				return;
+				return "Unknown encoding " + encoding;
 			g('noscript').remove();
 			g('script').remove();
 			g('title').remove();
@@ -129,7 +129,15 @@
 		};
 		let hash = window.location.hash;
 		if (hash != "")
-			process(hash);
+		{
+			let error = process(hash);
+			if (error !== undefined)
+			{
+				let body = g('body');
+				body.style.color = 'maroon';
+				body.innerText = "[u2j error] " + error + ".";
+			}
+		}
 		else
 			showui();
 	}
