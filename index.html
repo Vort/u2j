@@ -2,22 +2,23 @@
 	<head><title>u2j</title></head>
 	<noscript>JavaScript support is required.</noscript>
 	<script>
-		function process(hash)
+	{
+		let g = s => document.getElementsByTagName(s)[0];
+		let e = s => document.createElement(s);
+		let alphabets =
 		{
-			if (hash == "")
-				return;
+			"1": "01",
+			"2": "0123456789",
+			"3": "0123456789abcdef",
+			"4": "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
+		};
+		let process = hash =>
+		{
 			hash = hash.substring(1);
 			if (hash == "")
 				return;
 			let js = "";
 			let encoding = hash.at(0);
-			const alphabets =
-			{
-				"1": "01",
-				"2": "0123456789",
-				"3": "0123456789abcdef",
-				"4": "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
-			};
 			hash = hash.substring(1);
 			if (encoding == "0")
 				js = hash;
@@ -68,9 +69,70 @@
 			}
 			else
 				return;
-			eval(js);
-		}
-		process(window.location.hash);
+			g('noscript').remove();
+			g('script').remove();
+			g('title').remove();
+			setTimeout(js, 0);
+		};
+		let convert = (js, urlarea) =>
+		{
+			let encoding = "4";
+			let alphabet = alphabets[encoding];
+			let base = BigInt(alphabet.length);
+			let bytes = new TextEncoder().encode(js);
+			let compression = 1 - bytes.some(b => b >> 7 != 0);
+			let bits = [1, 0, 0, compression];
+			let bitsPerByte = 8 - compression;
+			for (let i = 0; i < bytes.length; i++)
+				for (let j = 0; j < bitsPerByte; j++)
+					bits.push(bytes[i] >> (bitsPerByte - 1 - j) & 1);
+			let num = 0n;
+			for (let i = 0; i < bits.length; i++)
+			{
+				num *= 2n;
+				num += BigInt(bits[i]);
+			}
+			let symbols = [];
+			while (num != 0n)
+			{
+				symbols.push(alphabet[num % base]);
+				num /= base;
+			}
+			symbols.reverse();
+			let baseaddr = location.href.split('#')[0];
+			urlarea.value = baseaddr + "#" + encoding + symbols.join("");
+		};
+		let showui = () =>
+		{
+			let jsarea = e("textarea");
+			jsarea.style.display = "block";
+			jsarea.cols = 80;
+			jsarea.rows = 25;
+			jsarea.value = "alert('Hello, world!')";
+			let urlarea = e("textarea");
+			urlarea.style.display = "block";
+			urlarea.cols = 80;
+			urlarea.rows = 8;
+			let convertbutton = e("button");
+			convertbutton.style.display = "block";
+			convertbutton.style.marginTop = 6;
+			convertbutton.style.marginBottom = 6;
+			convertbutton.textContent = "↓ Convert ↓";
+			convertbutton.onclick = () =>
+			{
+				convert(jsarea.value, urlarea);
+			};
+			let body = g('body');
+			body.appendChild(jsarea);
+			body.appendChild(convertbutton);
+			body.appendChild(urlarea);
+		};
+		let hash = window.location.hash;
+		if (hash != "")
+			process(hash);
+		else
+			showui();
+	}
 	</script>
 	<body></body>
 </html>
