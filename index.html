@@ -12,6 +12,18 @@
 			"3": "0123456789abcdef",
 			"4": "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
 		};
+		let basesInt = [256n, 128n, 96n];
+		let offsets = [0, 0, 32];
+		let bitsToNum = bits =>
+		{
+			let num = 0n;
+			for (let i = 0; i < bits.length; i++)
+			{
+				num *= 2n;
+				num += BigInt(bits[i]);
+			}
+			return num;
+		};
 		let process = hash =>
 		{
 			hash = hash.substring(1);
@@ -25,42 +37,42 @@
 			else if (encoding in alphabets)
 			{
 				let alphabet = alphabets[encoding];
-				let base = BigInt(alphabet.length);
-				let num = 0n;
+				let baseExt = BigInt(alphabet.length);
+				let numExt = 0n;
 				for (const symbol of hash)
 				{
 					let symbolIndex = alphabet.indexOf(symbol);
 					if (symbolIndex == -1)
 						return "Unexpected symbol '" + symbol + "'";
-					num *= base;
-					num += BigInt(symbolIndex);
+					numExt *= baseExt;
+					numExt += BigInt(symbolIndex);
 				}
-				if (num == 0n)
+				if (numExt == 0n)
 					return "No data";
 				let bits = [];
-				while (num != 1n)
+				while (numExt != 1n)
 				{
-					bits.push(Number(num % 2n));
-					num /= 2n;
+					bits.push(Number(numExt % 2n));
+					numExt /= 2n;
 				}
 				if (bits.length < 3)
 					return "Compression type missing";
 				bits.reverse();
-				let compression = bits[0] * 4 + bits[1] * 2 + bits[2];
+				let compression = Number(bitsToNum(bits.slice(0, 3)));
 				bits = bits.slice(3);
-				if (compression < 2)
+				if (compression < 3)
 				{
-					let bitsPerByte = 8 - compression;
-					while (bits.length % bitsPerByte != 0)
-						bits.push(0);
-					let byteCount = bits.length / bitsPerByte;
-					let bytes = new Uint8Array(byteCount);
-					for (let i = 0; i < byteCount; i++)
+					let baseInt = basesInt[compression];
+					let maxValue = 1n << BigInt(bits.length);
+					let symbolCount = 0;
+					for (let i = baseInt; i <= maxValue; i *= baseInt)
+						symbolCount++;
+					let numInt = bitsToNum(bits);
+					let bytes = new Uint8Array(symbolCount);
+					for (let i = symbolCount - 1; i >= 0; i--)
 					{
-						let byte = 0;
-						for (let j = 0; j < bitsPerByte; j++)
-							byte += bits[i * bitsPerByte + bitsPerByte - 1 - j] << j;
-						bytes[i] = byte;
+						bytes[i] = Number(numInt % baseInt) + offsets[compression];
+						numInt /= baseInt;
 					}
 					js = new TextDecoder().decode(bytes);
 				}
@@ -73,58 +85,75 @@
 			g('title').remove();
 			setTimeout(js, 0);
 		};
-		let convert = (js, urlarea) =>
+		let convert = (js, urlArea) =>
 		{
 			let encoding = "4";
 			let alphabet = alphabets[encoding];
-			let base = BigInt(alphabet.length);
 			let bytes = new TextEncoder().encode(js);
-			let compression = 1 - bytes.some(b => b >> 7 != 0);
-			let bits = [1, 0, 0, compression];
-			let bitsPerByte = 8 - compression;
-			for (let i = 0; i < bytes.length; i++)
-				for (let j = 0; j < bitsPerByte; j++)
-					bits.push(bytes[i] >> (bitsPerByte - 1 - j) & 1);
-			let num = 0n;
-			for (let i = 0; i < bits.length; i++)
+			let compression = 0;
+			if (bytes.every(b => b <= 127))
 			{
-				num *= 2n;
-				num += BigInt(bits[i]);
+				compression = 1;
+				if (bytes.every(b => b >= 32))
+					compression = 2;
 			}
-			let symbols = [];
-			while (num != 0n)
+			let bitsHeader = [1];
+			for (let i = 2; i >= 0; i--)
+				bitsHeader.push(compression >> i & 1);
+			let baseInt = basesInt[compression];
+			let maxValue = 1n;
+			let numInt = 0n;
+			for (let i = 0; i < bytes.length; i++)
 			{
-				symbols.push(alphabet[num % base]);
-				num /= base;
+				maxValue *= baseInt;
+				numInt *= baseInt;
+				numInt += BigInt(bytes[i] - offsets[compression]);
+			}
+			maxValue--;
+			let bitsData = [];
+			while (maxValue != 0n)
+			{
+				bitsData.push(Number(numInt % 2n));
+				numInt /= 2n;
+				maxValue /= 2n;
+			}
+			bitsData.reverse();
+			let baseExt = BigInt(alphabet.length);
+			let numExt = bitsToNum(bitsHeader.concat(bitsData));
+			let symbols = [];
+			while (numExt != 0n)
+			{
+				symbols.push(alphabet[numExt % baseExt]);
+				numExt /= baseExt;
 			}
 			symbols.reverse();
-			let baseaddr = location.href.split('#')[0];
-			urlarea.value = baseaddr + "#" + encoding + symbols.join("");
+			let baseAddr = location.href.split('#')[0];
+			urlArea.value = baseAddr + "#" + encoding + symbols.join("");
 		};
-		let showui = () =>
+		let showUI = () =>
 		{
-			let jsarea = e("textarea");
-			jsarea.style.display = "block";
-			jsarea.cols = 80;
-			jsarea.rows = 25;
-			jsarea.value = "alert('Hello, world!')";
-			let urlarea = e("textarea");
-			urlarea.style.display = "block";
-			urlarea.cols = 80;
-			urlarea.rows = 8;
-			let convertbutton = e("button");
-			convertbutton.style.display = "block";
-			convertbutton.style.marginTop = "6px";
-			convertbutton.style.marginBottom = "6px";
-			convertbutton.textContent = "↓ Convert ↓";
-			convertbutton.onclick = () =>
+			let jsArea = e("textarea");
+			jsArea.style.display = "block";
+			jsArea.cols = 80;
+			jsArea.rows = 25;
+			jsArea.value = "alert('Hello, world!')";
+			let urlArea = e("textarea");
+			urlArea.style.display = "block";
+			urlArea.cols = 80;
+			urlArea.rows = 8;
+			let convertButton = e("button");
+			convertButton.style.display = "block";
+			convertButton.style.marginTop = "6px";
+			convertButton.style.marginBottom = "6px";
+			convertButton.textContent = "↓ Convert ↓";
+			convertButton.onclick = () =>
 			{
-				convert(jsarea.value, urlarea);
+				convert(jsArea.value, urlArea);
 			};
 			let body = g('body');
-			body.appendChild(jsarea);
-			body.appendChild(convertbutton);
-			body.appendChild(urlarea);
+			body.appendChild(jsArea);
+			body.appendChild(convertButton);
+			body.appendChild(urlArea);
 		};
 		let hash = window.location.hash;
 		if (hash != "")
@@ -138,7 +167,7 @@
 			}
 		}
 		else
-			showui();
+			showUI();
 	}
 	</script></body>
 </html>
